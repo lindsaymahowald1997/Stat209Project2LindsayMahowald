@@ -1,0 +1,125 @@
+---
+title: "Project 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+income <- income_per_person_gdppercapita_ppp_inflation_adjusted
+emission <- yearly_co2_emissions_1000_tonnes
+child <- child_mortality_0_5_year_olds_dying_per_1000_born
+genderschool <- ratio_of_girls_to_boys_in_primary_and_secondary_education_perc_1_
+democracy <- democracy_score_use_as_color_1_
+humandevelopment <- hdi_human_development_index
+corruption <- corruption_perception_index_cpi
+```
+
+###Combining Data Tables (Setup)
+```{r}
+incomelong <- income %>%
+  gather(
+key = "year", 
+value = "income",
+-country
+)
+incomelongedit <- incomelong %>% filter(year > "1969", year < "2018")
+
+emissionslong <- emission %>% 
+  gather(
+key = "year", 
+value = "emissions",
+-country
+)
+emissionslongedit <- emissionslong %>% filter(year > "1969")
+View(emissionslongedit)
+
+childlong <- child %>% 
+  gather(
+key = "year", 
+value = "mortality",
+-country
+)
+
+genderschoollong <- genderschool %>% 
+  gather(
+key = "year", 
+value = "ratio_of_girls_to_boys_in_primary_school",
+-country
+)
+
+democracylong <- democracy %>% 
+  gather(
+key = "year", 
+value = "democracyscore",
+-country
+)
+
+humandevelopmentlong <- humandevelopment %>% 
+  gather(
+key = "year", 
+value = "developmentscore",
+-country
+)
+
+corruptionlong <- corruption %>%
+  gather(
+key = "year", 
+value = "corruptionscore",
+-country
+)
+
+incomechildemissionsgenderdemocracy <- 
+  incomelongedit %>% 
+  left_join(childlong, by = c("country", "year")) %>%left_join(emissionslongedit, by = c("country", "year")) %>%left_join(genderschoollong, by = c("country", "year")) %>%left_join(democracylong, by = c("country", "year"))
+
+incomechildemissionsgenderdemocracy1 <- incomechildemissionsgenderdemocracy %>% mutate(us = ifelse(country == "United States", 1, 0))
+
+incomechildemissionsgenderdemocracy2 <- incomechildemissionsgenderdemocracy1 %>% mutate(incomelevels = ifelse(income < 1000, 0, ifelse(income < 1750, 1, ifelse(income <5000, 2, 3))))
+
+FullModel <- incomechildemissionsgenderdemocracy2 %>% full_join(humandevelopmentlong, by = c("country", "year")) %>% full_join(corruptionlong, by = c("country", "year"))
+
+View(incomechildemissionsgenderdemocracy2)
+View(FullModel)
+```
+
+###Pre-Combination Plots (Warmups)
+```{r}
+childlongzimbabwe <- childlong %>% filter(country == "Zimbabwe" | country == "Afghanistan")
+incomelongzimbabwe <- incomelong %>% filter(country == "Zimbabwe" | country == "Afghanistan")
+emissionslongzimbabwe <- emissionslongedit %>% filter(country == "Zimbabwe" | country == "Afghanistan")
+
+ggplot() + geom_point(data = childlongzimbabwe, aes(x = year, y = mortality, alpha = "0.7", color = country))
+
+ggplot() + geom_point(data = childlongzimbabwe, aes(x = year, y = mortality, alpha = "0.7", color = country)) + geom_point(data = incomelongzimbabwe, aes(x = year, y = income, alpha = "0.7", color = country)) + geom_point(data = emissionslongzimbabwe, aes(x = year, y = emissions, alpha = "0.7", color = country))
+```
+
+
+```{r}
+incomechildemissionsgenderdemocracy2 %>% filter(country == "Zimbabwe") %>% ggplot() + geom_point(aes(x = income, y = mortality, color = country))
+
+incomechildemissionsgenderdemocracy2 %>% filter(year == "2014" | year == "2013" | year == "2012" | year == "2011" | year == "2010") %>% ggplot() + geom_point(aes(x = income, y = mortality)) + geom_smooth(aes(x = income, y = mortality))
+
+incomeemissionsmodel <- lm(income ~ emissions, data = incomechildemissionsgenderdemocracy2)
+summary(incomechildemissionsgenderdemocracy2)
+```
+
+```{r}
+incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school, color = mortality)) + geom_smooth(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school), method = loess)
+
+incomechildemissionsgenderdemocracy2 %>% ggplot(aes(x = democracyscore, y = income, color = incomelevels)) + geom_point() + geom_smooth(aes(x = democracyscore, y = income))
+
+incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school, color = incomelevels)) + geom_smooth(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Child Mortality and School Gender Composition") + theme(plot.title = element_text(hjust = 0.5))
+
+incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school, color = incomelevels)) + scale_color_gradient2(low = "firebrick3", high = "blue", mid = "green1", labels = c("<$1000", "<$1750", "<$5000", ">=$5000"), midpoint = 1.75) + geom_smooth(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Child Mortality and School Gender Composition") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Ratio of Girls to Boys in Primary/Secondary School") + xlab("Child Mortality Levels")
+```
+
+```{r}
+FullModel %>% ggplot() + geom_point(aes(x = developmentscore, y = corruptionscore, color = incomelevels)) + scale_color_gradient2(low = "firebrick3", high = "blue", mid = "green1", labels = c("<$1000", "<$1750", "<$5000", ">=$5000"), midpoint = 1.75) + geom_smooth(aes(x = developmentscore, y = corruptionscore), method = loess) + ggtitle("Development and Democracy Scores") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Corruption Score") + xlab("Development Score")
+
+FullModel %>% ggplot() + geom_point(aes(x = developmentscore, y = corruptionscore, color = democracyscore)) #+ scale_color_gradient2(low = "firebrick3", high = "blue", mid = "green1", labels = c("<$1000", "<$1750", "<$5000"), midpoint = 0) + geom_smooth(aes(x = developmentscore, y = corruptionscore), method = loess) + ggtitle("Development and Democracy Scores") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Corruption Score") + xlab("Development Score")
+```
