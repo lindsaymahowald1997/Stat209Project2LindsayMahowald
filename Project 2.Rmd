@@ -10,24 +10,24 @@ How do we measure a country's place in the world? Economists, political scientis
 
 Data is pulled largely from gapminder.org, a website which aggregates a wide variety of country-related indicators. Variables such as income per capita, gender disparities in education, and child mortality rates are collected for each of the world's 192 countries over the course of the last several decades. This project compiles these statistics into one large data table, and seeks to use visualizations to examine how well they correlate. 
 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(ggplot2)
-income <- income_per_person_gdppercapita_ppp_inflation_adjusted
-emission <- yearly_co2_emissions_1000_tonnes
-child <- child_mortality_0_5_year_olds_dying_per_1000_born
-genderschool <- ratio_of_girls_to_boys_in_primary_and_secondary_education_perc_1_
-democracy <- democracy_score_use_as_color_1_
-humandevelopment <- hdi_human_development_index
-corruption <- corruption_perception_index_cpi
-region <- Countries_By_Region
+income <- read_csv("income_per_person_gdppercapita_ppp_inflation_adjusted.csv")
+emission <- read_csv("yearly_co2_emissions_1000_tonnes.csv")
+child <- read_csv("child_mortality_0_5_year_olds_dying_per_1000_born.csv")
+genderschool <- read_csv("ratio_of_girls_to_boys_in_primary_and_secondary_education_perc (1).csv")
+democracy <- read_csv("democracy_score_use_as_color (1).csv")
+humandevelopment <- read_csv("hdi_human_development_index.csv")
+corruption <- read_csv("corruption_perception_index_cpi.csv")
+region <- read_csv("countries_by_region.csv")
 ```
 
 ###Combining Data Tables (Setup)
 ##Altering Each Dataset to Long Form
 
 The first step in collecting the data for this report was to alter each data frame to make joining them possible. Each of the data tables on gapminder.org had columns for each of the years studied, and rows for each of the 192 countries of the world. The "gather" function is a simple way to alter this setup - it creates a single "year" column, and repeats the names of each country for each year being studied, allowing each table to instead consist of just 3 columns - country, year, and the indicator being studied. 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomelong <- income %>%
   gather(
 key = "year", 
@@ -83,7 +83,7 @@ value = "corruptionscore",
 ##Combining Datasets
 
 After the data sets are altered, they must be combined using the "join" function. 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 regionincome <- incomelongedit %>% inner_join(region, by = c("country"))
 
 incomechildemissionsgenderdemocracy <- 
@@ -96,13 +96,13 @@ incomechildemissionsgenderdemocracy2 <- incomechildemissionsgenderdemocracy1 %>%
 
 FullModel <- incomechildemissionsgenderdemocracy2 %>% full_join(humandevelopmentlong, by = c("country", "year")) %>% full_join(corruptionlong, by = c("country", "year"))
 
-View(incomechildemissionsgenderdemocracy2)
-View(FullModel)
+#View(incomechildemissionsgenderdemocracy2)
+#View(FullModel)
 ```
 
 ###Pre-Combination Plots (Warmups)
 Just some warm-up plots comparing the data before the data tables have been combined. I will likely exclude these from the final draft.
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 childlongzimbabwe <- childlong %>% filter(country == "Zimbabwe" | country == "Afghanistan")
 incomelongzimbabwe <- incomelong %>% filter(country == "Zimbabwe" | country == "Afghanistan")
 emissionslongzimbabwe <- emissionslongedit %>% filter(country == "Zimbabwe" | country == "Afghanistan")
@@ -112,7 +112,7 @@ ggplot() + geom_point(data = childlongzimbabwe, aes(x = year, y = mortality, alp
 ggplot() + geom_point(data = childlongzimbabwe, aes(x = year, y = mortality, alpha = "0.7", color = country)) + geom_point(data = incomelongzimbabwe, aes(x = year, y = income, alpha = "0.7", color = country)) + geom_point(data = emissionslongzimbabwe, aes(x = year, y = emissions, alpha = "0.7", color = country))
 ```
 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomechildemissionsgenderdemocracy2 %>% filter(country == "Zimbabwe") %>% ggplot() + geom_point(aes(x = income, y = mortality, color = country))
 
 incomechildemissionsgenderdemocracy2 %>% filter(year == "2014" | year == "2013" | year == "2012" | year == "2011" | year == "2010") %>% ggplot() + geom_point(aes(x = income, y = mortality)) + geom_smooth(aes(x = income, y = mortality))
@@ -121,7 +121,7 @@ incomeemissionsmodel <- lm(income ~ emissions, data = incomechildemissionsgender
 summary(incomechildemissionsgenderdemocracy2)
 ```
 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school, color = mortality)) + geom_smooth(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school), method = loess)
 
 incomechildemissionsgenderdemocracy2 %>% ggplot(aes(x = democracyscore, y = income, color = incomelevels)) + geom_point() + geom_smooth(aes(x = democracyscore, y = income))
@@ -134,12 +134,12 @@ incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality
 
 This graph displays child mortality levels as they relate to the ratio of girls to boys in primary and secondary education. A loess line is fitted onto these points, and indicates that as child mortality rates increase, so does the disparity between the number of girls and boys in school (there are higher numbers of boys relative to girls). The colors show the income levels of each of the countries studied, and indicate that nations with higher income levels per capita have lower child mortality rates, and a more even ratio of boys to girls in school.
 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school, color = incomelevels)) + scale_color_gradient2(low = "firebrick3", high = "blue", mid = "green1", labels = c("<$1000", "<$1750", "<$5000", ">=$5000"), midpoint = 1.75) + geom_smooth(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Child Mortality and School Gender Composition") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Ratio of Girls to Boys in Primary/Secondary School") + xlab("Child Mortality Levels")
 ```
 
 This graph also displays the comparison between child mortality and school gender composition, but this time the colors indicate the region of the world that each country is located in, as an attempt to parse out potential regional differences. An alpha value was used in one of the plots to give the points some transparency, in an attempt to make them easier to see. It appears that countries in Asia and the Arab States have the largest gender disparities in their schools, and that countries in Europe and North America have the lowest gender disparities - as well as relatively low levels of child mortality. The global north seems to perform better than the global south in each of these metrics.
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school, color = region)) + geom_smooth(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Child Mortality and School Gender Composition") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Ratio of Girls to Boys in Primary/Secondary School") + xlab("Child Mortality Levels")
 
 incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school, alpha = "0.8", color = region)) + geom_smooth(aes(x = mortality, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Child Mortality and School Gender Composition") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Ratio of Girls to Boys in Primary/Secondary School") + xlab("Child Mortality Levels")
@@ -148,12 +148,12 @@ incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = mortality
 ```
 
 This graph examines income as it relates to school gender composition. 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school, color = region)) + geom_smooth(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Income and School Gender Composition") + theme(plot.title = element_text(hjust = 0.5)) + ylab("School Gender Composition") + xlab("Income")
 ```
 
 This graph compares a country's income per capita to their national emissions rates. Based on the linear regression performed, it seems that the higher a nation's income, the higher their CO2 emissions. However, the graph indicates that there are some clear outliers among nations in Asia and in North America, who have relatively low incomes but extremely high emissions rates. 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 incomechildemissionsgenderdemocracy2 %>% ggplot() + geom_point(aes(x = income, y = emissions, color = region)) + geom_smooth(aes(x = income, y = ratio_of_girls_to_boys_in_primary_school), method = loess) + ggtitle("Income and Emissions") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Emissions") + xlab("Income")
 
 incomeemissionsmodel <- lm(income ~ emissions, data = incomechildemissionsgenderdemocracy2)
@@ -161,7 +161,7 @@ summary(incomeemissionsmodel)
 ```
 
 These graphs compare a country's development scores with their corruption scores. There appears to be a clear correlation between the two - nations that are more developed appear to be less corrupt. However, it is also worth noting that these are very Westernized metrics of national success and may not be the best indicators of a country's overall wellbeing.
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 FullModel %>% ggplot() + geom_point(aes(x = developmentscore, y = corruptionscore, color = incomelevels)) + scale_color_gradient2(low = "firebrick3", high = "blue", mid = "green1", labels = c("<$1000", "<$1750", "<$5000", ">=$5000"), midpoint = 1.75) + geom_smooth(aes(x = developmentscore, y = corruptionscore), method = loess) + ggtitle("Development and Corruption Scores") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Corruption Score") + xlab("Development Score")
 
 FullModel %>% ggplot() + geom_point(aes(x = developmentscore, y = corruptionscore, color = region)) + geom_smooth(aes(x = developmentscore, y = corruptionscore), method = loess) + ggtitle("Development and Corruption Scores") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Corruption Score") + xlab("Development Score")
@@ -169,6 +169,6 @@ FullModel %>% ggplot() + geom_point(aes(x = developmentscore, y = corruptionscor
 FullModel %>% ggplot() + geom_point(aes(x = developmentscore, y = corruptionscore, color = northsouth)) + geom_smooth(aes(x = developmentscore, y = corruptionscore), method = loess) + ggtitle("Development and Corruption Scores") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Corruption Score") + xlab("Development Score")
 ```
 
-```{r}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 FullModel %>% ggplot() + geom_point(aes(x = region, y = income, color = northsouth)) + geom_smooth(aes(x = developmentscore, y = corruptionscore), method = loess) + ggtitle("Region and Income") + theme(plot.title = element_text(hjust = 0.5)) + ylab("Income") + xlab("Region")
 ```
